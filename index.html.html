@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Streaming</title>
+</head>
+<body>
+    <h1>Audio Streaming Client</h1>
+    <button id="start">Start Streaming</button>
+    <button id="stop" disabled>Stop Streaming</button>
+
+    <script>
+        const wsUrl = 'ws://113.176.94.130:5566/ws?password=demopassword';  // URL of the WebSocket server
+        let ws;
+        let mediaStream;
+        let mediaRecorder;
+
+        document.getElementById('start').addEventListener('click', async () => {
+            try {
+                // Initialize WebSocket
+                ws = new WebSocket(wsUrl);
+
+                ws.binaryType = 'arraybuffer';  // Set binary type for WebSocket
+
+                // Request audio permissions and start capturing
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(event.data);
+                    }
+                };
+
+                mediaRecorder.start(100);  // Collect audio in 100ms chunks
+
+                document.getElementById('start').disabled = true;
+                document.getElementById('stop').disabled = false;
+            } catch (error) {
+                console.error('Error starting audio capture:', error);
+            }
+        });
+
+        document.getElementById('stop').addEventListener('click', () => {
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+                mediaStream.getTracks().forEach(track => track.stop());
+                ws.close();
+                document.getElementById('start').disabled = false;
+                document.getElementById('stop').disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
